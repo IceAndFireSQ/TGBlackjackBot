@@ -4,12 +4,10 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from commands import start, menu, balance, play, hit, stand, double, split
 
-# Load environment variables from .env file
 load_dotenv()
 
 def main():
-    # Get the token from the environment variable
-    token = os.getenv('TELEGRAM_BOT_TOKEN')
+    token = os.getenv('TELEGRAM_BOT_TOKEN_MAIN')
     if not token:
         raise ValueError("TELEGRAM_BOT_TOKEN not found in environment variables")
 
