@@ -1,8 +1,8 @@
 import os
 from dotenv import load_dotenv
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from commands import start, menu, balance, play, hit, stand, double, split
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
+from commands import start, handle_action
 
 load_dotenv()
 
@@ -13,14 +13,11 @@ def main():
 
     app = ApplicationBuilder().token(token).build()
 
+    # Handler for the /start command, which will show the main menu
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("menu", menu))
-    app.add_handler(CommandHandler("balance", balance))
-    app.add_handler(CommandHandler("play", play))
-    app.add_handler(CommandHandler("hit", hit))
-    app.add_handler(CommandHandler("stand", stand))
-    app.add_handler(CommandHandler("double", double))
-    app.add_handler(CommandHandler("split", split))
+
+    # CallbackQueryHandler for all button interactions
+    app.add_handler(CallbackQueryHandler(handle_action))
 
     app.run_polling()
 
