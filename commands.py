@@ -3,14 +3,12 @@ from telegram.ext import ContextTypes
 from db_utils import get_balance, update_balance, create_tables
 from game_utils import deal_card, calculate_hand_value, check_winner, format_hand
 
-# Global dictionary to hold game states for each user
 games = {}
 
-# Define winning and losing amounts
-WIN_AMOUNT = 20  # Amount won for a win
-DRAW_AMOUNT = 10  # Amount won for a draw
-DOUBLE_WIN_AMOUNT = 40  # Amount won for a win after doubling
-DOUBLE_DRAW_AMOUNT = 20  # Amount won for a draw after doubling
+WIN_AMOUNT = 20
+DRAW_AMOUNT = 10
+DOUBLE_WIN_AMOUNT = 40
+DOUBLE_DRAW_AMOUNT = 20
 
 def get_game_buttons(user_id):
     buttons = []
@@ -97,7 +95,7 @@ async def play(query: Update, context: ContextTypes.DEFAULT_TYPE):
         'bot_value': calculate_hand_value(bot_hand),
         'bet': 10,
         'first_action': False,
-        'stood_hands': [False]  # Track if each hand has been stood
+        'stood_hands': [False]
     }
     update_balance(user_id, -10)
     await query.message.reply_text(
@@ -114,9 +112,9 @@ async def hit(query: Update, context: ContextTypes.DEFAULT_TYPE, action: str):
         games[user_id]['first_action'] = True
     if action.startswith("hit"):
         if action == "hit":
-            hand_index = 0  # First hand
+            hand_index = 0
         else:
-            hand_index = int(action[-1]) - 1  # Get hand index from action
+            hand_index = int(action[-1]) - 1
 
         card = deal_card()
         games[user_id]['player_hands'][hand_index].append(card)
@@ -127,7 +125,7 @@ async def hit(query: Update, context: ContextTypes.DEFAULT_TYPE, action: str):
                 f"You hit: {card}. Your hand: {format_hand(games[user_id]['player_hands'][hand_index])}. You busted! Bot wins!",
                 reply_markup=get_end_game_buttons()
             )
-            del games[user_id]  # Remove the game for this user
+            del games[user_id]
             return
 
         hand_message = f"Your hand: {format_hand(games[user_id]['player_hands'][hand_index])}"
@@ -144,17 +142,17 @@ async def stand(query: Update, context: ContextTypes.DEFAULT_TYPE, action: str):
 
     if action.startswith("stand"):
         if action == "stand":
-            hand_index = 0  # First hand
+            hand_index = 0
         else:
-            hand_index = int(action[-1]) - 1  # Get hand index from action
+            hand_index = int(action[-1]) - 1
 
-        games[user_id]['stood_hands'][hand_index] = True  # Mark the hand as stood
+        games[user_id]['stood_hands'][hand_index] = True
         await query.message.reply_text(
             f"You stand: {format_hand(games[user_id]['player_hands'][hand_index])}",
         )
 
         if all(games[user_id]['stood_hands']):
-            await resolve_game(query, user_id)  # Resolve the game if all hands are stood
+            await resolve_game(query, user_id)
         else:
             await query.message.reply_text("Now it's time for the next hand.")
 
@@ -172,12 +170,12 @@ async def resolve_game(query: Update, user_id: str):
             result = check_winner(player_value, games[user_id]['bot_value'])
             results.append(f"Hand {i + 1}: {result}")
             if result == "Player wins!":
-                if games[user_id]['first_action']:
+                if not games[user_id]['first_action']:
                     update_balance(user_id, WIN_AMOUNT)
                 else:
                     update_balance(user_id, DOUBLE_WIN_AMOUNT)
             elif result == "It's a draw!":
-                if games[user_id]['first_action']:
+                if not games[user_id]['first_action']:
                     update_balance(user_id, DRAW_AMOUNT)
                 else:
                     update_balance(user_id, DOUBLE_DRAW_AMOUNT)
@@ -232,11 +230,11 @@ async def split(query: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("Insufficient balance to split.")
         return
 
-    split_card = player_hand.pop()  # Remove one card from the original hand
-    split_hand = [split_card]  # Start the second hand with the split card
-    games[user_id]['player_hands'].append(split_hand)  # Add the new hand to the player's hands
-    games[user_id]['player_values'].append(calculate_hand_value(split_hand))  # Calculate the value of the new hand
-    games[user_id]['stood_hands'].append(False)  # Add a new entry for the split hand
+    split_card = player_hand.pop()
+    split_hand = [split_card]
+    games[user_id]['player_hands'].append(split_hand)
+    games[user_id]['player_values'].append(calculate_hand_value(split_hand))
+    games[user_id]['stood_hands'].append(False)
 
     await query.message.reply_text(
         f"You split your hand.\nFirst hand: {format_hand(games[user_id]['player_hands'][0])}\n"
