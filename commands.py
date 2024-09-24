@@ -2,6 +2,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from db_utils import get_balance, update_balance, create_tables
 from game_utils import deal_card, calculate_hand_value, check_winner, format_hand
+import sqlite3
 
 games = {}
 
@@ -43,14 +44,29 @@ def get_main_menu():
         [InlineKeyboardButton("Info", callback_data="info")]
     ])
 
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_chat.id
+
     create_tables()
-    await update.message.reply_text(
-        "Welcome to Blackjack!",
-        reply_markup=get_main_menu()
-    )
-    update_balance(user_id, 100)
+
+    conn = sqlite3.connect('blackjack.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT user_id FROM balances WHERE user_id = ?', (user_id,))
+    result = cursor.fetchone()
+    conn.close()
+
+    if result is None:
+        update_balance(user_id, 100)
+        await update.message.reply_text(
+            "Welcome to Blackjack! You've been given 100 credits to start. Good luck!",
+            reply_markup=get_main_menu()
+        )
+    else:
+        await update.message.reply_text(
+            "Welcome back to Blackjack!",
+            reply_markup=get_main_menu()
+        )
 
 async def handle_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -84,7 +100,7 @@ async def play(query: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("Finish your current game first.")
         return
     if get_balance(user_id) < 10:
-        await query.message.reply_text("You don't have enough credits to play.")
+        await query.message.reply_text("You don't have enough credits to play. Contact @IAFSQ to add credits.")
         return
     player_hand = [deal_card(), deal_card()]
     bot_hand = [deal_card(), deal_card()]
