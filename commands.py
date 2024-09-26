@@ -97,7 +97,10 @@ async def balance(query: Update, context: ContextTypes.DEFAULT_TYPE):
 async def play(query: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.message.chat_id
     if user_id in games:
-        await query.message.reply_text("Finish your current game first.")
+        await query.message.reply_text(
+            f"Finish your current game first.",
+            reply_markup = get_game_buttons(user_id)
+        )
         return
     if get_balance(user_id) < 10:
         await query.message.reply_text("You don't have enough credits to play. Contact @IAFSQ to add credits.")
@@ -110,6 +113,7 @@ async def play(query: Update, context: ContextTypes.DEFAULT_TYPE):
         'player_values': [calculate_hand_value(player_hand)],
         'bot_value': calculate_hand_value(bot_hand),
         'bet': 10,
+        'is_split': False,
         'first_action': False,
         'stood_hands': [False]
     }
@@ -135,20 +139,34 @@ async def hit(query: Update, context: ContextTypes.DEFAULT_TYPE, action: str):
         card = deal_card()
         games[user_id]['player_hands'][hand_index].append(card)
         games[user_id]['player_values'][hand_index] = calculate_hand_value(games[user_id]['player_hands'][hand_index])
-
-        if games[user_id]['player_values'][hand_index] > 21:
+        if games[user_id]['is_split'] == True:
+            if games[user_id]['player_values'][hand_index] > 21:
+                await query.message.reply_text(
+                    f"You hit: {card}. Your hand: {format_hand(games[user_id]['player_hands'][hand_index])}. You busted! Bot wins!",
+                    reply_markup=get_end_game_buttons()
+                )
+                del games[user_id]
+                return
+            hand_message = f"Your hand1: {format_hand(games[user_id]['player_hands'][0])}\nYour hand2: {format_hand(games[user_id]['player_hands'][1])}"
             await query.message.reply_text(
-                f"You hit: {card}. Your hand: {format_hand(games[user_id]['player_hands'][hand_index])}. You busted! Bot wins!",
-                reply_markup=get_end_game_buttons()
+                f"You hit: {card}.\n{hand_message}",
+                reply_markup=get_game_buttons(user_id)
             )
-            del games[user_id]
-            return
 
-        hand_message = f"Your hand: {format_hand(games[user_id]['player_hands'][hand_index])}"
-        await query.message.reply_text(
-            f"You hit: {card}. {hand_message}",
-            reply_markup=get_game_buttons(user_id)
-        )
+        else:
+            if games[user_id]['player_values'][hand_index] > 21:
+                await query.message.reply_text(
+                    f"You hit: {card}. Your hand: {format_hand(games[user_id]['player_hands'][hand_index])}. You busted! Bot wins!",
+                    reply_markup=get_end_game_buttons()
+                )
+                del games[user_id]
+                return
+
+            hand_message = f"Your hand: {format_hand(games[user_id]['player_hands'][hand_index])}"
+            await query.message.reply_text(
+                f"You hit: {card}. {hand_message}",
+                reply_markup=get_game_buttons(user_id)
+            )
 
 async def stand(query: Update, context: ContextTypes.DEFAULT_TYPE, action: str):
     user_id = query.message.chat_id
@@ -246,6 +264,7 @@ async def split(query: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("Insufficient balance to split.")
         return
 
+    games[user_id]['is_split'] = True
     split_card = player_hand.pop()
     split_hand = [split_card]
     games[user_id]['player_hands'].append(split_hand)
